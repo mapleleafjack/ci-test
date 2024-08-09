@@ -1,0 +1,48 @@
+name: Lint DataProcessingScripts
+
+on:
+  push:
+    paths:
+      - 'DataProcessingScripts/**'
+  pull_request:
+    paths:
+      - 'DataProcessingScripts/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8
+
+    - name: Identify base branch
+      id: vars
+      run: echo "BASE_REF=$(echo ${GITHUB_BASE_REF:-$GITHUB_REF} | sed 's/refs\/heads\///')" >> $GITHUB_ENV
+
+    - name: Fetch base branch
+      run: git fetch origin ${{ env.BASE_REF }} --depth=1
+
+    - name: Identify changed files
+      id: changed_files
+      run: |
+        git diff --name-only HEAD origin/${{ env.BASE_REF }} > changed_files.txt
+
+    - name: Run flake8 linter on changed files
+      run: |
+        changed_files=$(cat changed_files.txt | grep '^DataProcessingScripts/.*\.py$' | tr '\n' ' ')
+        if [ -n "$changed_files" ]; then
+          flake8 $changed_files
+        else
+          echo "No Python files have changed in DataProcessingScripts directory."
+        fi
